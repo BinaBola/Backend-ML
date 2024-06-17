@@ -1,24 +1,22 @@
-import os
-
-from dotenv import load_dotenv
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-import io
-import tensorflow as tf
-import keras
-import numpy as np
-from PIL import Image
-
 from flask import Flask, request, jsonify
+import os
+from werkzeug.utils import secure_filename
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image
+import numpy as np
+from google.cloud import storage
+from urllib.request import urlopen
+from PIL import Image
+from io import BytesIO
 
+app = Flask(__name__)
 
-load_dotenv()
+# Load model
+model = tf.keras.models.load_model('model.h5')
 
-model = keras.models.load_model("model.h5")
-
-class_data = {
-    0: {'name': 'anggur', 'calories': 69, 'carbs': 18.1, 'crotein' : 0.72, 'fat' : 0.16},
+# Nutrition data
+class_info = {
+    0: {'name': 'anggur', 'calories': 69, 'carbs': 18.1, 'protein' : 0.72, 'fat' : 0.16},
     1: {'name': 'apel', 'calories': 52, 'carbs': 13.81, 'protein' : 0.26, 'fat' : 0.17},
     2: {'name': 'ayam-goreng', 'calories': 295, 'carbs': 10.76, 'protein' : 37, 'fat' : 14.7},
     3: {'name': 'ayam-kampung', 'calories': 246, 'carbs': 10.76, 'protein' : 37.9, 'fat' : 9},
@@ -33,56 +31,90 @@ class_data = {
     12: {'name': 'tempe', 'calories': 193, 'carbs': 9.39, 'protein' : 18.54, 'fat' : 10.8}
 }
 
-def transform_image(pillow_image):
-    data = np.asarray(pillow_image)
-    data = data / 255.0
-    data = np.expand_dims(data, axis=-1)
-    data = np.repeat(data, 3, axis=-1)
-    data = tf.image.resize(data, [224, 224])
-    data = np.expand_dims(data, axis=0)
-    return data
+# Create a Cloud Storage client
+storage_client = storage.Client()
 
-def predict(x):
-    predictions = model(x)
-    predictions = tf.nn.softmax(predictions)
-    pred0 = predictions[0]
-    label0 = np.argmax(pred0)
-    confidence_score = pred0[label0].numpy()
-    class_info = class_data[int(label0)]
-    return class_info, confidence_score
+# Your Cloud Storage bucket name
+bucket_name = 'trial-capstone'
 
-app = Flask(__name__)
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        file = request.files.get('file')
-        if file is None or file.filename == "":
-            return jsonify({"error": "no file"})
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-        try:
-            image_bytes = file.read()
-            pillow_img = Image.open(io.BytesIO(image_bytes)).convert('L')
-            tensor = transform_image(pillow_img)
-            class_info, confidence_score = predict(tensor)
-            data = {
-                "Message" : "Model is predicted successfully",
-                "Food Prediction" : class_info['name'],
-                "Calories": class_info['calories'],
-                "Carbs": class_info['carbs'],
-                "Protein": class_info['protein'],
-                "Fat": class_info['fat'],
+def preprocess_image(img_path):
+    # Check if the path is a URL or a local file
+    if img_path.startswith(('http:', 'https:')):
+        # If it's a URL, download the image
+        response = urlopen(img_path)
+        img = Image.open(BytesIO(response.read()))
+    else:
+        # If it's a local file, open it directly
+        img = Image.open(img_path)
+
+    # Resize the image to the target size
+    img = img.resize((224, 224))
+    
+    img_array = np.array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
+    
+    return img_array
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        if 'image' not in request.files:
+            return jsonify({'error': 'No image part in the request'})
+
+        file = request.files['image']
+
+        if file.filename == '':
+            return jsonify({'error': 'No selected image file'})
+
+        if file and allowed_file(file.filename):
+            # Secure filename
+            filename = secure_filename(file.filename)
+
+            # Save the file to Cloud Storage
+            bucket = storage_client.get_bucket(bucket_name)
+            blob = bucket.blob(filename)
+            blob.upload_from_file(file)
+
+            # Get public URL of the uploaded file
+            uploaded_file_url = f'https://storage.googleapis.com/{bucket_name}/{filename}'
+
+            # Remove the local file (no longer needed)
+            file.close()
+
+            # Preprocess the image
+            img = preprocess_image(uploaded_file_url)
+
+            # Delete the file from Cloud Storage
+            blob.delete()
+
+            # Make predictions
+            predictions = model.predict(img)
+            predicted_index = np.argmax(predictions)
+            predicted_label = class_info[predicted_index]
+            confidence_score = np.max(predictions)
+
+            result = {
+                "Message" : "Model predicted successfully",
+                "Food Prediction" : predicted_label['name'],
+                "Calories": predicted_label['calories'],
+                "Carbs": predicted_label['carbs'],
+                "Protein": predicted_label['protein'],
+                "Fat": predicted_label['fat'],
                 "Confidence": float(confidence_score)
             }
-            return jsonify(data), 200
-        except Exception as e:
-            return jsonify({
-                "message": str(e)
-            }), 400
 
-    return "OK"
+            return jsonify(result), 200
+        else:
+            return jsonify({'error': 'Invalid file format. Supported formats: jpg, jpeg, png'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
-
+    app.run(debug=True, host="0.0.0.0", port=8080)
