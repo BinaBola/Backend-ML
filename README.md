@@ -1,24 +1,26 @@
-# Machine Learning Model Serving with Flask
+# Instalasi dan Penggunaan Aplikasi Flask
 
-This project demonstrates how to deploy a machine learning model locally using Flask. The model predicts food based on an input image.
+Aplikasi ini menggunakan Flask sebagai framework web untuk membuat API prediksi gambar menggunakan model TensorFlow. Aplikasi ini memerlukan beberapa dependensi yang harus diinstal sebelum dapat dijalankan.
 
-## Prerequisites
+## Prasyarat
 
-Before running the project, make sure you have the following installed:
+Pastikan Anda sudah menginstal:
 
-- Python 3.x
-- pip
+Python 3.9 atau versi yang lebih baru
+pip (package installer untuk Python)
+Virtual environment (opsional tetapi direkomendasikan)
 
-## Setup
+## Langkah-langkah Instalasi
 
-Clone the project repository:
+1. Clone Repository
+Clone repository dari GitHub ke komputer Anda.
 
 ```bash
 git clone =https://github.com/BinaBola/Backend-ML.git
 cd Backend-ML
 ```
 
-Create Virtual Environment and activate the Virtual Environment:
+2. Buat dan Aktifkan Virtual Environment
 
 ```
 python -m venv .venv
@@ -36,66 +38,54 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies:
+3. Instal Dependensi
 
 ```
 pip install -r requirements.txt
 ```
+4. Pastikan Model dan Data Tersedia
+Pastikan file model (model.h5) tersedia di direktori root proyek.
 
-## Notes
+5. Jalankan Aplikasi
+Jalankan aplikasi Flask menggunakan perintah berikut:
 
-If you want to deploy to google cloud you can use bucket by changing the value of the variable bucket_name. But if you want to run locally, you can uncomment line code 12,39,40 and comment line code 8,41,42,43,44,45. Also in local you need to create folder .\static\uploads and .env in work directory. Lastly, you need to copy configuration in .env.example to .env and run back-end while trying this API. If, the PORT are the same, you can change this API PORT to 5000.
-
-## Model
-
-Before deploying the model, ensure you have a model file (model.h5)
-
-## Running the Flask App Locally
-
-Start the Flask app:
-
-```
-flask run
+```bash
+python local.py
 ```
 
-Open your web browser and go to http://localhost:8080 to check the health of the API.
+Buka browser anda dan pergi ke http://127.0.0.1:8080 untuk memeriksa API.
 
-## Usage
+## Endpoint API
 
-Use the /prediction endpoint to make predictions based on an input image.
+Predict
+Endpoint ini digunakan untuk mengunggah gambar dan mendapatkan prediksi.
 
-```
-curl -X POST -F "image=@path/to/your/image.jpg" http://localhost:8080/prediction
-```
-
-Replace path/to/your/image.jpg with the path to the image file you want to predict.
-
-API Endpoints
-Health Check
-Path: /
-Method: GET
-
-Image Prediction
-Path: /prediction
+URL: /predict
 Method: POST
-Payload: Form data with the image file.
+Content-Type: multipart/form-data
+Form Data:
+image: File gambar (jpg, jpeg, png)
 
-Example Response
+## Penggunaan
+
+Gunakan titik akhir /predict untuk membuat prediksi berdasarkan gambar input.
+
+```
+curl -X POST -F "image=@path/to/your/image.jpg" http://127.0.0.1:8080/predict
+```
+
+Ganti path/to/your/image.jpg dengan path ke file gambar yang ingin Anda prediksi.
+
+## Contoh Response
 
 ```
 {
-    "data": {
-        "confidence": 0.9999995231628418,
-        "exercise": {
-            "data": {
-                []
-            }
-        },
-        "gym_equipment_prediction": "Dumbells"
-    },
-    "status": {
-        "code": 200,
-        "message": "Success Predicting"
-    }
+    "Message": "Model predicted successfully",
+    "Food Prediction": "apel",
+    "Calories": 52,
+    "Carbs": 13.81,
+    "Protein": 0.26,
+    "Fat": 0.17,
+    "Confidence": 0.95
 }
 ```
