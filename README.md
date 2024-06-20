@@ -52,7 +52,7 @@ Run the Flask application using the following command:
 python local.py
 ```
 
-Buka browser anda dan pergi ke http://127.0.0.1:8080 untuk memeriksa API.
+Open your browser and go to http://127.0.0.1:8080 to check the API.
 
 ## API Endpoints
 
