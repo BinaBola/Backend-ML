@@ -2,7 +2,7 @@
 
 This application uses Flask as a web framework to create an image prediction API using a TensorFlow model. Several dependencies must be installed before running the application.
 
-## Prerequisites
+## Requirement
 Make sure you have installed:
 
 Python 3.9 or newer
