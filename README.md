@@ -23,6 +23,21 @@ this application has the potential to make a real difference in the lives of Ind
 
 ## Technology
 The Binabola project is built using the following technologies:
+Flask: A lightweight WSGI web application framework in Python used to build the web server.
+
+TensorFlow and Keras    : Machine learning libraries used to load and make predictions with a pre-trained model (model.h5).
+
+NumPy                   : A library for numerical computations in Python, used here for handling array operations.
+
+Google Cloud Storage    : A service for storing and retrieving files on Google Cloud, used to upload and manage image files.
+
+Pillow                  : A Python Imaging Library (PIL) fork, used for image processing.
+
+Werkzeug                : A comprehensive WSGI web application library used for secure filename handling.
+
+urllib                  : A module for working with URLs, used to download images from the web.
+
+io                      : A module for handling the byte streams, used to manage in-memory binary streams.
 
 # Installation and Usage of Flask Application
 
